@@ -35,23 +35,20 @@ let systemSettings = {
 // ==========================================
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        currentUser = user;
-        document.getElementById('login-overlay').classList.add('d-none');
-        document.getElementById('main-app').classList.remove('d-none');
-        
-        await fetchUserRole(user.uid);
-        await loadSettings();
+        // ... (các code cũ giữ nguyên) ...
         
         document.getElementById('user-display').innerText = user.email;
-        loadReceipts('manage');
+        loadReceipts('manage'); 
         
-        // Mặc định ngày nộp là hiện tại
         setTodayForInput();
         
+        // --- THAY ĐỔI Ở ĐÂY ---
+        // CŨ: loadRecentReceipts(); 
+        // MỚI: Kích hoạt chế độ Realtime
+        setupRealtimeRecentList(); 
+        
     } else {
-        currentUser = null;
-        document.getElementById('login-overlay').classList.remove('d-none');
-        document.getElementById('main-app').classList.add('d-none');
+        // ...
     }
 });
 
@@ -337,22 +334,6 @@ function resetForm(full = true) {
     document.getElementById('inp-name').focus();
 }
 
-async function loadRecentReceipts() {
-    const snap = await db.collection('receipts').orderBy('createdAt', 'desc').limit(5).get();
-    const tbody = document.getElementById('tbody-recent');
-    tbody.innerHTML = '';
-    snap.forEach(doc => {
-        const d = doc.data();
-        // Hiển thị ngày nộp thay vì ngày tạo
-        const dateStr = d.paymentDate ? new Date(d.paymentDate.seconds*1000).toLocaleDateString('vi-VN') : '...';
-        tbody.innerHTML += `<tr>
-            <td>${dateStr}</td>
-            <td>${d.studentName}</td>
-            <td>${d.studentClass}</td>
-            <td>${formatMoney(d.amount)}</td>
-        </tr>`;
-    });
-}
 
 // ==========================================
 // 7. QUẢN LÝ & BÁO CÁO (Lọc theo paymentDate)
@@ -538,6 +519,62 @@ async function rePrint(id) {
 function printReport() { document.body.classList.add('print-report-mode'); window.print(); document.body.classList.remove('print-report-mode'); }
 function exportExcel() { const wb = XLSX.utils.table_to_book(document.getElementById("table-report"), {sheet: "BaoCao"}); XLSX.writeFile(wb, "BaoCao_DoanhThu.xlsx"); }
 
+// --- LOGIC MỚI: DANH SÁCH REALTIME TRONG NGÀY ---
+let recentListenerUnsubscribe = null; // Biến để quản lý việc tắt lắng nghe khi cần
+
+function setupRealtimeRecentList() {
+    // 1. Xác định mốc thời gian: Bắt đầu từ 00:00:00 sáng nay
+    const startoday = new Date();
+    startoday.setHours(0, 0, 0, 0);
+
+    // 2. Hủy lắng nghe cũ (nếu có) để tránh bị chồng chéo
+    if (recentListenerUnsubscribe) {
+        recentListenerUnsubscribe();
+    }
+
+    // 3. Thiết lập lắng nghe Realtime (onSnapshot)
+    // Lọc: Chỉ lấy phiếu được TẠO (createdAt) từ sáng nay đến giờ
+    const query = db.collection('receipts')
+        .where('createdAt', '>=', startoday)
+        .orderBy('createdAt', 'desc');
+
+    recentListenerUnsubscribe = query.onSnapshot((snapshot) => {
+        const tbody = document.getElementById('tbody-recent');
+        
+        // Cập nhật tiêu đề bảng để hiển thị tổng số phiếu hôm nay
+        const count = snapshot.size;
+        // Tìm thẻ tiêu đề bên HTML (nếu bạn muốn hiển thị số lượng)
+        // Ví dụ: document.getElementById('lbl-recent-count').innerText = count;
+
+        tbody.innerHTML = ''; // Xóa trắng bảng cũ
+
+        if (count === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted fst-italic">Hôm nay chưa có phiếu nào</td></tr>';
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            
+            // Hiển thị giờ nhập liệu
+            const timeStr = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : '...';
+            
+            // Format tiền
+            const moneyStr = formatMoney(d.amount);
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${timeStr}</td>
+                    <td>${d.studentName}</td>
+                    <td>${d.studentClass}</td>
+                    <td class="fw-bold text-success text-end">${moneyStr}</td>
+                </tr>
+            `;
+        });
+    }, (error) => {
+        console.error("Lỗi Realtime:", error);
+    });
+}
 // Tạo User (Admin Only) - Giữ nguyên như cũ
 const formCreateUser = document.getElementById('form-create-user');
 if (formCreateUser) {
@@ -555,4 +592,5 @@ if (formCreateUser) {
         } catch (error) { alert("Lỗi: " + error.message); }
     });
 }
+
 

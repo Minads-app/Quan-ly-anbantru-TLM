@@ -41,10 +41,8 @@ body {
     margin-bottom: 20px;
 }
 .card-header {
-    background-color: white !important;
     border-bottom: 1px solid #c73c27;
     font-weight: 700;
-    color: var(--primary-color);
     border-radius: 12px 12px 0 0 !important;
     padding: 15px 20px;
 }
@@ -156,5 +154,6 @@ label {
     
     @page { margin: 0.5cm; }
 }
+
 
 

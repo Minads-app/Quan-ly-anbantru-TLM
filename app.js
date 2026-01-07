@@ -341,4 +341,69 @@ function exportExcel() {
     const table = document.getElementById("table-report");
     const wb = XLSX.utils.table_to_book(table, {sheet: "BaoCao"});
     XLSX.writeFile(wb, "BaoCao_DoanhThu.xlsx");
+
+}
+// --- 8. CHỨC NĂNG TẠO USER (Dành cho Admin) ---
+
+const formCreateUser = document.getElementById('form-create-user');
+const msgBox = document.getElementById('create-msg');
+
+if (formCreateUser) {
+    formCreateUser.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Kiểm tra quyền Admin lần cuối ở client (Database Rules sẽ chặn nếu gian lận)
+        if (currentRole !== 'admin') {
+            alert("Bạn không có quyền thực hiện chức năng này!");
+            return;
+        }
+
+        const email = document.getElementById('new-user-email').value;
+        const password = document.getElementById('new-user-pass').value;
+        const role = document.getElementById('new-user-role').value;
+        const btn = document.getElementById('btn-create-user');
+
+        if (password.length < 6) {
+            alert("Mật khẩu phải từ 6 ký tự trở lên!");
+            return;
+        }
+
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo...';
+            msgBox.innerText = "";
+
+            // KỸ THUẬT QUAN TRỌNG: Secondary App
+            // Tạo một instance firebase phụ để tạo user mà không làm Admin bị logout
+            const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+            
+            // 1. Tạo Authentication User trên app phụ
+            const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+            const newUid = userCredential.user.uid;
+
+            // 2. Ghi Role vào Firestore (Dùng App chính - db của Admin để có quyền ghi)
+            await db.collection('users').doc(newUid).set({
+                email: email,
+                role: role,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 3. Xóa app phụ để dọn dẹp bộ nhớ
+            await secondaryApp.delete();
+
+            alert(`Đã tạo thành công user: ${email} với quyền ${role.toUpperCase()}`);
+            formCreateUser.reset();
+
+        } catch (error) {
+            console.error(error);
+            let message = error.message;
+            if (error.code === 'auth/email-already-in-use') {
+                message = "Email này đã được sử dụng!";
+            }
+            alert("Lỗi: " + message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Tạo User';
+        }
+    });
 }

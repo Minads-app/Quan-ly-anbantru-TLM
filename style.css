@@ -8,7 +8,7 @@
 /* 2. CẤU HÌNH MÀU SẮC (THEME) */
 :root {
     /* Bạn sửa mã màu ở đây */
-    --primary-color: #2563eb; /* Xanh hoàng gia (Thay bằng màu trường bạn) */
+    --primary-color: #126182; /* Xanh hoàng gia (Thay bằng màu trường bạn) */
     --secondary-color: #64748b;
     --success-color: #10b981;
     --danger-color: #ef4444;
@@ -25,7 +25,7 @@ body {
 
 /* Thanh Menu (Navbar) */
 .navbar {
-    background: linear-gradient(135deg, var(--primary-color), #1e40af) !important;
+    background: linear-gradient(135deg, var(--primary-color), #1D546D) !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .navbar-brand {
@@ -156,3 +156,4 @@ label {
     
     @page { margin: 0.5cm; }
 }
+

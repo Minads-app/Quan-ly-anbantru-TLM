@@ -143,38 +143,51 @@ document.getElementById('form-settings').addEventListener('submit', async (e) =>
 });
 
 // ==========================================
-// 5. LOGIC XỬ LÝ ẢNH (PASTE & COMPRESS)
+// 5. LOGIC XỬ LÝ ẢNH (NÂNG CẤP: GLOBAL PASTE & CLICK UPLOAD)
 // ==========================================
-const pasteArea = document.getElementById('paste-area');
 const imgPreview = document.getElementById('img-preview');
 const placeholder = document.getElementById('paste-placeholder');
 const btnRemoveImg = document.getElementById('btn-remove-img');
 const inpImgBase64 = document.getElementById('inp-img-base64');
+const inpFileUpload = document.getElementById('inp-file-upload');
 
-// Sự kiện Dán (Ctrl + V)
-pasteArea.addEventListener('paste', (e) => {
+// 1. Xử lý khi người dùng chọn file từ máy (Click Upload)
+function handleFileUpload(input) {
+    if (input.files && input.files[0]) {
+        processImage(input.files[0]);
+    }
+}
+
+// 2. Xử lý sự kiện Dán (Ctrl + V) - BẮT SỰ KIỆN TOÀN CỤC (WINDOW)
+window.addEventListener('paste', (e) => {
+    // Nếu đang gõ chữ trong ô Input/Textarea thì không can thiệp
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     for (const item of items) {
         if (item.type.indexOf('image') !== -1) {
+            e.preventDefault(); // Ngăn hành vi mặc định
             const blob = item.getAsFile();
             processImage(blob);
-            e.preventDefault(); // Ngăn việc dán text rác
+            break; // Chỉ lấy 1 ảnh đầu tiên tìm thấy
         }
     }
 });
 
-// Hàm nén ảnh
+// 3. Hàm nén ảnh & Hiển thị (Giữ nguyên logic nén)
 function processImage(file) {
+    // Kiểm tra định dạng
+    if (!file.type.match('image.*')) return alert("Vui lòng chỉ chọn file Ảnh!");
+
     const reader = new FileReader();
     reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-            // Tạo Canvas để resize và nén
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
             
-            // Giới hạn chiều rộng tối đa 800px
+            // Resize: Giới hạn chiều rộng tối đa 800px
             const MAX_WIDTH = 800;
             if (width > MAX_WIDTH) {
                 height *= MAX_WIDTH / width;
@@ -186,10 +199,9 @@ function processImage(file) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Nén JPEG chất lượng 60%
+            // Nén JPEG 60%
             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
             
-            // Hiển thị và lưu
             showImagePreview(dataUrl);
         };
         img.src = event.target.result;
@@ -203,20 +215,19 @@ function showImagePreview(base64) {
     btnRemoveImg.classList.remove('d-none');
     placeholder.classList.add('d-none');
     inpImgBase64.value = base64;
+    
+    // Nếu dán thành công, xóa input link để tránh nhầm lẫn
+    document.getElementById('inp-img-link').value = ""; 
 }
 
-btnRemoveImg.addEventListener('click', (e) => {
-    e.stopPropagation(); // Tránh kích hoạt click vào box
-    resetImage();
-});
-
-function resetImage() {
+// Hàm này cần được gọi toàn cục (đã gắn vào onclick trong HTML)
+window.resetImage = function() {
     imgPreview.src = "";
     imgPreview.classList.add('d-none');
     btnRemoveImg.classList.add('d-none');
     placeholder.classList.remove('d-none');
     inpImgBase64.value = "";
-    document.getElementById('inp-img-link').value = ""; // Reset cả link
+    inpFileUpload.value = ""; // Reset file input để chọn lại file cũ được
 }
 
 // ==========================================
@@ -544,3 +555,4 @@ if (formCreateUser) {
         } catch (error) { alert("Lỗi: " + error.message); }
     });
 }
+

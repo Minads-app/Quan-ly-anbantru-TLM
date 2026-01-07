@@ -1,5 +1,5 @@
 // ==========================================
-// 1. CẤU HÌNH (Thay Config của bạn vào đây)
+// 1. CẤU HÌNH FIREBASE
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyAKmHgrchZwCYaZW0ky831Oj6qQrUS2HuI",
@@ -15,12 +15,13 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ==========================================
-// 2. STATE
+// 2. BIẾN TOÀN CỤC (STATE)
 // ==========================================
 let currentUser = null;
 let currentRole = null; 
 let editingReceiptId = null; 
 let lastReceiptData = null; 
+let recentListenerUnsubscribe = null; // Quản lý Realtime
 
 let systemSettings = {
     schoolName: "Trường THPT ...",
@@ -31,33 +32,43 @@ let systemSettings = {
 };
 
 // ==========================================
-// 3. AUTH & INIT
+// 3. QUẢN LÝ AUTH (ĐĂNG NHẬP / ĐĂNG XUẤT)
 // ==========================================
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        // ... (các code cũ giữ nguyên) ...
+        currentUser = user;
+        document.getElementById('login-overlay').classList.add('d-none');
+        document.getElementById('main-app').classList.remove('d-none');
+        
+        await fetchUserRole(user.uid);
+        await loadSettings();
         
         document.getElementById('user-display').innerText = user.email;
-        loadReceipts('manage'); 
+        loadReceipts('manage');
         
         setTodayForInput();
         
-        // --- THAY ĐỔI Ở ĐÂY ---
-        // CŨ: loadRecentReceipts(); 
-        // MỚI: Kích hoạt chế độ Realtime
+        // Kích hoạt Realtime danh sách phiếu trong ngày
         setupRealtimeRecentList(); 
         
     } else {
-        // ...
+        currentUser = null;
+        document.getElementById('login-overlay').classList.remove('d-none');
+        document.getElementById('main-app').classList.add('d-none');
     }
 });
 
-document.getElementById('login-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-password').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Lỗi: " + err.message));
-});
+// Xử lý sự kiện bấm nút Đăng nhập
+const loginForm = document.getElementById('login-form');
+if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch(err => alert("Lỗi đăng nhập: " + err.message));
+    });
+}
 
 function logout() {
     auth.signOut().then(() => window.location.reload());
@@ -77,13 +88,13 @@ async function fetchUserRole(uid) {
 
 function setTodayForInput() {
     const now = new Date();
-    // Format YYYY-MM-DDTHH:mm cho input datetime-local
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('inp-date').value = now.toISOString().slice(0, 16);
+    const inpDate = document.getElementById('inp-date');
+    if(inpDate) inpDate.value = now.toISOString().slice(0, 16);
 }
 
 // ==========================================
-// 4. SETTINGS
+// 4. CẤU HÌNH SETTINGS
 // ==========================================
 async function loadSettings() {
     try {
@@ -140,7 +151,7 @@ document.getElementById('form-settings').addEventListener('submit', async (e) =>
 });
 
 // ==========================================
-// 5. LOGIC XỬ LÝ ẢNH (NÂNG CẤP: GLOBAL PASTE & CLICK UPLOAD)
+// 5. XỬ LÝ ẢNH (GLOBAL PASTE & UPLOAD)
 // ==========================================
 const imgPreview = document.getElementById('img-preview');
 const placeholder = document.getElementById('paste-placeholder');
@@ -148,34 +159,31 @@ const btnRemoveImg = document.getElementById('btn-remove-img');
 const inpImgBase64 = document.getElementById('inp-img-base64');
 const inpFileUpload = document.getElementById('inp-file-upload');
 
-// 1. Xử lý khi người dùng chọn file từ máy (Click Upload)
+// Xử lý khi chọn file từ máy
 function handleFileUpload(input) {
     if (input.files && input.files[0]) {
         processImage(input.files[0]);
     }
 }
 
-// 2. Xử lý sự kiện Dán (Ctrl + V) - BẮT SỰ KIỆN TOÀN CỤC (WINDOW)
+// Bắt sự kiện Paste toàn cục
 window.addEventListener('paste', (e) => {
-    // Nếu đang gõ chữ trong ô Input/Textarea thì không can thiệp
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     for (const item of items) {
         if (item.type.indexOf('image') !== -1) {
-            e.preventDefault(); // Ngăn hành vi mặc định
+            e.preventDefault();
             const blob = item.getAsFile();
             processImage(blob);
-            break; // Chỉ lấy 1 ảnh đầu tiên tìm thấy
+            break;
         }
     }
 });
 
-// 3. Hàm nén ảnh & Hiển thị (Giữ nguyên logic nén)
 function processImage(file) {
-    // Kiểm tra định dạng
-    if (!file.type.match('image.*')) return alert("Vui lòng chỉ chọn file Ảnh!");
-
+    if (!file.type.match('image.*')) return alert("Chỉ chấp nhận file ảnh!");
+    
     const reader = new FileReader();
     reader.onload = (event) => {
         const img = new Image();
@@ -183,22 +191,16 @@ function processImage(file) {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            
-            // Resize: Giới hạn chiều rộng tối đa 800px
             const MAX_WIDTH = 800;
             if (width > MAX_WIDTH) {
                 height *= MAX_WIDTH / width;
                 width = MAX_WIDTH;
             }
-
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-
-            // Nén JPEG 60%
             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-            
             showImagePreview(dataUrl);
         };
         img.src = event.target.result;
@@ -207,29 +209,67 @@ function processImage(file) {
 }
 
 function showImagePreview(base64) {
-    imgPreview.src = base64;
-    imgPreview.classList.remove('d-none');
-    btnRemoveImg.classList.remove('d-none');
-    placeholder.classList.add('d-none');
-    inpImgBase64.value = base64;
-    
-    // Nếu dán thành công, xóa input link để tránh nhầm lẫn
-    document.getElementById('inp-img-link').value = ""; 
+    if(imgPreview) {
+        imgPreview.src = base64;
+        imgPreview.classList.remove('d-none');
+        btnRemoveImg.classList.remove('d-none');
+        placeholder.classList.add('d-none');
+        inpImgBase64.value = base64;
+        document.getElementById('inp-img-link').value = ""; 
+    }
 }
 
-// Hàm này cần được gọi toàn cục (đã gắn vào onclick trong HTML)
 window.resetImage = function() {
-    imgPreview.src = "";
-    imgPreview.classList.add('d-none');
-    btnRemoveImg.classList.add('d-none');
-    placeholder.classList.remove('d-none');
-    inpImgBase64.value = "";
-    inpFileUpload.value = ""; // Reset file input để chọn lại file cũ được
+    if(imgPreview) {
+        imgPreview.src = "";
+        imgPreview.classList.add('d-none');
+        btnRemoveImg.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+        inpImgBase64.value = "";
+        if(inpFileUpload) inpFileUpload.value = ""; 
+    }
 }
 
 // ==========================================
-// 6. LOGIC LẬP PHIẾU THU
+// 6. LOGIC LẬP PHIẾU THU & REALTIME LIST
 // ==========================================
+
+// --- REALTIME LIST MỚI ---
+function setupRealtimeRecentList() {
+    const startoday = new Date();
+    startoday.setHours(0, 0, 0, 0);
+
+    if (recentListenerUnsubscribe) recentListenerUnsubscribe();
+
+    const query = db.collection('receipts')
+        .where('createdAt', '>=', startoday)
+        .orderBy('createdAt', 'desc');
+
+    recentListenerUnsubscribe = query.onSnapshot((snapshot) => {
+        const tbody = document.getElementById('tbody-recent');
+        if(!tbody) return;
+        
+        tbody.innerHTML = '';
+        if (snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Hôm nay chưa có phiếu nào</td></tr>';
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            const timeStr = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : '...';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${timeStr}</td>
+                    <td>${d.studentName}</td>
+                    <td>${d.studentClass}</td>
+                    <td class="fw-bold text-success">${formatMoney(d.amount)}</td>
+                </tr>
+            `;
+        });
+    }, (error) => console.error("Realtime Error:", error));
+}
+
 function updatePriceDisplay() {
     const price = systemSettings.mealPrice;
     document.getElementById('inp-price-display').value = formatMoney(price);
@@ -268,7 +308,7 @@ function formatAmountDisplay() {
 
 document.getElementById('inp-meals').addEventListener('input', calculateTotalFromMeals);
 
-// XỬ LÝ SUBMIT FORM
+// SUBMIT FORM PHIẾU THU
 document.getElementById('form-receipt').addEventListener('submit', async (e) => {
     e.preventDefault();
     const amount = parseInt(document.getElementById('inp-amount-hidden').value);
@@ -276,7 +316,6 @@ document.getElementById('form-receipt').addEventListener('submit', async (e) => 
     
     if (amount <= 0) return alert("Số tiền phải lớn hơn 0");
 
-    // Lấy ngày nộp từ input
     const dateInputVal = document.getElementById('inp-date').value;
     const paymentDate = dateInputVal ? new Date(dateInputVal) : new Date();
 
@@ -288,32 +327,30 @@ document.getElementById('form-receipt').addEventListener('submit', async (e) => 
         amount: amount,
         reason: document.getElementById('inp-reason').value,
         paymentMethod: document.getElementById('inp-method').value,
-        paymentDate: paymentDate, // MỚI: Lưu ngày nộp
-        proofImage: document.getElementById('inp-img-base64').value || "", // Lưu ảnh Base64
-        proofLink: document.getElementById('inp-img-link').value || "" // Lưu link ngoài
+        paymentDate: paymentDate,
+        proofImage: document.getElementById('inp-img-base64').value || "",
+        proofLink: document.getElementById('inp-img-link').value || ""
     };
 
     try {
         if (editingReceiptId) {
-            // Update
             receiptData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
             receiptData.updatedBy = currentUser.email;
             await db.collection('receipts').doc(editingReceiptId).update(receiptData);
             alert("Đã cập nhật phiếu!");
         } else {
-            // Create
-            receiptData.createdAt = firebase.firestore.FieldValue.serverTimestamp(); // Giữ ngày tạo để sort
+            receiptData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             receiptData.createdBy = currentUser.email;
             receiptData.receiptCode = "PT" + Date.now().toString().slice(-6);
             
             await db.collection('receipts').add(receiptData);
             lastReceiptData = receiptData;
             document.getElementById('btn-print-recent').disabled = false;
-            alert("Lưu phiếu thành công!");
+            // alert("Lưu thành công!"); // Có thể bỏ alert nếu muốn nhanh
         }
 
         resetForm(true);
-        loadRecentReceipts();
+        // Không cần loadRecentReceipts() nữa vì đã có Realtime
         loadReceipts('manage'); 
     } catch (err) { alert("Lỗi lưu: " + err.message); }
 });
@@ -321,8 +358,8 @@ document.getElementById('form-receipt').addEventListener('submit', async (e) => 
 function resetForm(full = true) {
     if(full) {
         document.getElementById('form-receipt').reset();
-        resetImage(); // Xóa ảnh
-        setTodayForInput(); // Reset ngày về hôm nay
+        resetImage();
+        setTodayForInput();
         
         editingReceiptId = null;
         const btnSubmit = document.querySelector('#form-receipt button[type="submit"]');
@@ -334,9 +371,8 @@ function resetForm(full = true) {
     document.getElementById('inp-name').focus();
 }
 
-
 // ==========================================
-// 7. QUẢN LÝ & BÁO CÁO (Lọc theo paymentDate)
+// 7. QUẢN LÝ & BÁO CÁO
 // ==========================================
 async function loadReceipts(mode = 'manage') {
     const filterTime = document.getElementById(`filter-time-${mode}`).value;
@@ -358,8 +394,6 @@ async function loadReceipts(mode = 'manage') {
         startDate = new Date(2020, 0, 1);
     }
 
-    // CHÚ Ý: Query theo paymentDate (Ngày nộp) thay vì createdAt
-    // Lưu ý: Cần tạo Index trong Firestore nếu console báo lỗi yêu cầu Index
     let query = db.collection('receipts')
         .where('paymentDate', '>=', startDate)
         .where('paymentDate', '<=', endDate)
@@ -386,8 +420,7 @@ async function loadReceipts(mode = 'manage') {
             totalMeals += d.mealCount;
             count++;
 
-            // Xử lý cột Ảnh
-            let imgCell = '<span class="text-muted small">Không</span>';
+            let imgCell = '<span class="text-muted small">--</span>';
             if (d.proofImage) {
                 imgCell = `<a href="#" onclick="viewImage('${id}'); return false;">Xem ảnh</a>`;
             } else if (d.proofLink) {
@@ -428,7 +461,6 @@ async function loadReceipts(mode = 'manage') {
     }
 }
 
-// Hàm xem ảnh Base64 (Popup đơn giản)
 function viewImage(id) {
     db.collection('receipts').doc(id).get().then(doc => {
         if(doc.exists && doc.data().proofImage) {
@@ -438,7 +470,9 @@ function viewImage(id) {
     });
 }
 
-// CÁC HÀM XÓA, SỬA, IN... GIỮ NGUYÊN (Chỉ cập nhật editReceipt)
+// ==========================================
+// 8. UTILS & IN ẤN
+// ==========================================
 async function deleteReceipt(id) {
     if(!confirm("Bạn chắc chắn muốn xóa?")) return;
     await db.collection('receipts').doc(id).delete();
@@ -451,7 +485,6 @@ async function editReceipt(id) {
         if (!doc.exists) return;
         const d = doc.data();
         
-        // Load ngày nộp
         if (d.paymentDate) {
             const dt = new Date(d.paymentDate.seconds * 1000);
             dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
@@ -466,11 +499,9 @@ async function editReceipt(id) {
         document.getElementById('inp-amount-hidden').value = d.amount;
         document.getElementById('inp-amount-display').value = formatMoney(d.amount);
         
-        // Load ảnh
         if (d.proofImage) showImagePreview(d.proofImage);
         else resetImage();
         
-        // Load link
         if (d.proofLink) document.getElementById('inp-img-link').value = d.proofLink;
 
         editingReceiptId = id;
@@ -489,7 +520,6 @@ function preparePrintData(data) {
     document.getElementById('p-school-name').innerText = systemSettings.schoolName;
     document.getElementById('p-school-addr').innerText = systemSettings.address;
     
-    // In ngày nộp
     const dateObj = data.paymentDate ? new Date(data.paymentDate.seconds * 1000) : new Date();
     document.getElementById('p-date').innerText = dateObj.toLocaleDateString('vi-VN');
 
@@ -519,63 +549,7 @@ async function rePrint(id) {
 function printReport() { document.body.classList.add('print-report-mode'); window.print(); document.body.classList.remove('print-report-mode'); }
 function exportExcel() { const wb = XLSX.utils.table_to_book(document.getElementById("table-report"), {sheet: "BaoCao"}); XLSX.writeFile(wb, "BaoCao_DoanhThu.xlsx"); }
 
-// --- LOGIC MỚI: DANH SÁCH REALTIME TRONG NGÀY ---
-let recentListenerUnsubscribe = null; // Biến để quản lý việc tắt lắng nghe khi cần
-
-function setupRealtimeRecentList() {
-    // 1. Xác định mốc thời gian: Bắt đầu từ 00:00:00 sáng nay
-    const startoday = new Date();
-    startoday.setHours(0, 0, 0, 0);
-
-    // 2. Hủy lắng nghe cũ (nếu có) để tránh bị chồng chéo
-    if (recentListenerUnsubscribe) {
-        recentListenerUnsubscribe();
-    }
-
-    // 3. Thiết lập lắng nghe Realtime (onSnapshot)
-    // Lọc: Chỉ lấy phiếu được TẠO (createdAt) từ sáng nay đến giờ
-    const query = db.collection('receipts')
-        .where('createdAt', '>=', startoday)
-        .orderBy('createdAt', 'desc');
-
-    recentListenerUnsubscribe = query.onSnapshot((snapshot) => {
-        const tbody = document.getElementById('tbody-recent');
-        
-        // Cập nhật tiêu đề bảng để hiển thị tổng số phiếu hôm nay
-        const count = snapshot.size;
-        // Tìm thẻ tiêu đề bên HTML (nếu bạn muốn hiển thị số lượng)
-        // Ví dụ: document.getElementById('lbl-recent-count').innerText = count;
-
-        tbody.innerHTML = ''; // Xóa trắng bảng cũ
-
-        if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted fst-italic">Hôm nay chưa có phiếu nào</td></tr>';
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const d = doc.data();
-            
-            // Hiển thị giờ nhập liệu
-            const timeStr = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : '...';
-            
-            // Format tiền
-            const moneyStr = formatMoney(d.amount);
-
-            tbody.innerHTML += `
-                <tr>
-                    <td>${timeStr}</td>
-                    <td>${d.studentName}</td>
-                    <td>${d.studentClass}</td>
-                    <td class="fw-bold text-success text-end">${moneyStr}</td>
-                </tr>
-            `;
-        });
-    }, (error) => {
-        console.error("Lỗi Realtime:", error);
-    });
-}
-// Tạo User (Admin Only) - Giữ nguyên như cũ
+// Tạo User (Admin Only)
 const formCreateUser = document.getElementById('form-create-user');
 if (formCreateUser) {
     formCreateUser.addEventListener('submit', async (e) => {
@@ -583,14 +557,16 @@ if (formCreateUser) {
         const email = document.getElementById('new-user-email').value;
         const password = document.getElementById('new-user-pass').value;
         const role = document.getElementById('new-user-role').value;
+        const btn = document.getElementById('btn-create-user');
+        
         try {
+            btn.innerHTML = 'Đang tạo...'; btn.disabled = true;
             const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
             const uc = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
             await db.collection('users').doc(uc.user.uid).set({ email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
             await secondaryApp.delete();
             alert("Tạo User thành công!"); formCreateUser.reset();
         } catch (error) { alert("Lỗi: " + error.message); }
+        finally { btn.innerHTML = 'Tạo User'; btn.disabled = false; }
     });
 }
-
-

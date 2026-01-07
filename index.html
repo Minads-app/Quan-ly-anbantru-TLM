@@ -32,7 +32,7 @@
 
     <div id="main-app" class="d-none">
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3 shadow-sm">
-            <a class="navbar-brand" href="#"><i class="fas fa-school"></i> Quản lý Bán trú THPT TEN LƠ MAN</a>
+            <a class="navbar-brand" href="#"><i class="fas fa-school"></i> Quản lý Bán trú</a>
             <div class="ms-auto d-flex align-items-center text-white">
                 <span class="me-3"><i class="fas fa-user-circle"></i> <span id="user-display">User</span> (<span id="role-display">Guest</span>)</span>
                 <button class="btn btn-sm btn-light text-primary" onclick="logout()">Thoát</button>
@@ -49,12 +49,17 @@
 
             <div class="tab-content p-4 bg-white border border-top-0 rounded-bottom shadow-sm">
                 
-                <div class="tab-pane fade show active" id="tab-phieuthu">
+                <div class="tab-pane active" id="tab-phieuthu">
                     <div class="row">
                         <div class="col-md-5">
                             <div class="card p-3 bg-light">
                                 <h5 class="text-primary mb-3">Thông tin phiếu thu</h5>
                                 <form id="form-receipt">
+                                    <div class="mb-2">
+                                        <label>Ngày nộp tiền <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" id="inp-date" class="form-control" required>
+                                    </div>
+
                                     <div class="mb-2">
                                         <label>Họ tên học sinh <span class="text-danger">*</span></label>
                                         <input type="text" id="inp-name" class="form-control" required autocomplete="off">
@@ -62,8 +67,9 @@
                                     
                                     <div class="mb-2">
                                         <label>Lớp <span class="text-danger">*</span></label>
-                                        <input type="text" id="inp-class" class="form-control" list="list-classes" placeholder="Gõ tên lớp để tìm..." required autocomplete="off">
-                                        <datalist id="list-classes"></datalist> </div>
+                                        <input type="text" id="inp-class" class="form-control" list="list-classes" placeholder="Gõ tên lớp..." required autocomplete="off">
+                                        <datalist id="list-classes"></datalist>
+                                    </div>
 
                                     <div class="row">
                                         <div class="col-6 mb-2">
@@ -71,7 +77,7 @@
                                             <input type="number" id="inp-meals" class="form-control" min="0.5" step="0.5" value="1" required>
                                         </div>
                                         <div class="col-6 mb-2">
-                                            <label>Đơn giá (VNĐ)</label>
+                                            <label>Đơn giá</label>
                                             <input type="text" id="inp-price-display" class="form-control bg-white" readonly>
                                         </div>
                                     </div>
@@ -87,21 +93,37 @@
                                     </div>
 
                                     <div class="mb-2">
-                                        <label>Lý do thu</label>
-                                        <input type="text" id="inp-reason" class="form-control" value="Tiền ăn bán trú">
+                                        <label>Hình thức & Lý do</label>
+                                        <div class="input-group">
+                                            <select id="inp-method" class="form-select" style="max-width: 130px;">
+                                                <option value="Tiền mặt">Tiền mặt</option>
+                                                <option value="Chuyển khoản">CK</option>
+                                                <option value="Ví điện tử">Ví</option>
+                                            </select>
+                                            <input type="text" id="inp-reason" class="form-control" value="Tiền ăn bán trú">
+                                        </div>
                                     </div>
+
                                     <div class="mb-3">
-                                        <label>Hình thức thanh toán</label>
-                                        <select id="inp-method" class="form-select">
-                                            <option value="Tiền mặt">Tiền mặt</option>
-                                            <option value="Chuyển khoản">Chuyển khoản</option>
-                                            <option value="Ví điện tử">Ví điện tử</option>
-                                        </select>
+                                        <label class="d-flex justify-content-between">
+                                            <span>Minh chứng (Ảnh CK)</span>
+                                            <small class="text-muted fst-italic">Click vào ô dưới & bấm Ctrl+V để dán ảnh</small>
+                                        </label>
+                                        
+                                        <div id="paste-area" class="border rounded p-2 text-center bg-white" style="cursor: pointer; position: relative;" tabindex="0">
+                                            <span id="paste-placeholder" class="text-muted small"><i class="fas fa-paste"></i> Dán ảnh vào đây</span>
+                                            <img id="img-preview" class="img-fluid d-none" style="max-height: 150px; border: 1px dashed #ccc;">
+                                            <button type="button" id="btn-remove-img" class="btn btn-sm btn-danger position-absolute top-0 end-0 d-none" style="margin: 5px;">&times;</button>
+                                        </div>
+                                        <input type="hidden" id="inp-img-base64">
+                                        
+                                        <input type="text" id="inp-img-link" class="form-control mt-1 form-control-sm" placeholder="Hoặc dán link Google Drive/Zalo vào đây...">
                                     </div>
+
                                     <div class="d-flex gap-2">
                                         <button type="button" onclick="resetForm()" class="btn btn-secondary flex-fill">Làm mới</button>
                                         <button type="submit" class="btn btn-primary flex-fill fw-bold">Lưu Phiếu</button>
-                                        <button type="button" onclick="printLastReceipt()" id="btn-print-recent" class="btn btn-warning flex-fill" disabled><i class="fas fa-print"></i> In Phiếu</button>
+                                        <button type="button" onclick="printLastReceipt()" id="btn-print-recent" class="btn btn-warning flex-fill" disabled><i class="fas fa-print"></i> In</button>
                                     </div>
                                 </form>
                             </div>
@@ -109,14 +131,14 @@
                         <div class="col-md-7">
                             <h6 class="text-muted">Các phiếu vừa nhập gần đây</h6>
                             <table class="table table-sm table-striped">
-                                <thead><tr><th>Giờ</th><th>Học sinh</th><th>Lớp</th><th>Số tiền</th></tr></thead>
+                                <thead><tr><th>Ngày Nộp</th><th>Học sinh</th><th>Lớp</th><th>Tiền</th></tr></thead>
                                 <tbody id="tbody-recent"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-quanly">
+                <div class="tab-pane" id="tab-quanly">
                     <div class="row mb-3 g-2">
                         <div class="col-md-3">
                             <select class="form-select" id="filter-time-manage">
@@ -127,7 +149,7 @@
                             </select>
                         </div>
                         <div class="col-md-5">
-                            <input type="text" id="search-manage" class="form-control" placeholder="Tìm tên học sinh hoặc lớp...">
+                            <input type="text" id="search-manage" class="form-control" placeholder="Tìm tên, lớp...">
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-info w-100 text-white" onclick="loadReceipts('manage')"><i class="fas fa-search"></i> Lọc</button>
@@ -137,13 +159,12 @@
                         <table class="table table-bordered table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Ngày thu</th>
+                                    <th>Ngày nộp</th>
                                     <th>Mã phiếu</th>
                                     <th>Học sinh</th>
                                     <th>Lớp</th>
                                     <th>Số tiền</th>
-                                    <th>Người thu</th>
-                                    <th>Thao tác</th>
+                                    <th>Ảnh/Link</th> <th>Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-manage"></tbody>
@@ -151,7 +172,7 @@
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-baocao">
+                <div class="tab-pane" id="tab-baocao">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex gap-2">
                             <select class="form-select w-auto" id="filter-time-report">
@@ -194,13 +215,13 @@
                             <thead class="table-secondary">
                                 <tr>
                                     <th>STT</th>
-                                    <th>Ngày/Giờ</th>
+                                    <th>Ngày Nộp</th>
                                     <th>Số phiếu</th>
                                     <th>Họ tên</th>
                                     <th>Lớp</th>
                                     <th>Số suất</th>
                                     <th>Thành tiền</th>
-                                    <th>HTTT</th>
+                                    <th>Ghi chú</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-report"></tbody>
@@ -208,7 +229,7 @@
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-cauhinh">
+                <div class="tab-pane" id="tab-cauhinh">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <div class="card h-100 shadow-sm">
@@ -218,7 +239,7 @@
                                 <div class="card-body">
                                     <form id="form-settings">
                                         <div class="mb-2">
-                                            <label class="form-label">Tên Căn tin / Trường</label>
+                                            <label class="form-label">Tên Trường</label>
                                             <input type="text" id="set-name" class="form-control" required>
                                         </div>
                                         <div class="mb-2">
@@ -229,12 +250,10 @@
                                             <label class="form-label">Điện thoại</label>
                                             <input type="text" id="set-phone" class="form-control">
                                         </div>
-                                        
                                         <div class="mb-2">
                                             <label class="form-label">Danh sách Lớp (Ngăn cách bằng dấu phẩy)</label>
-                                            <textarea id="set-classes" class="form-control" rows="3" placeholder="VD: 10A1, 10A2, 11B1..."></textarea>
+                                            <textarea id="set-classes" class="form-control" rows="3" placeholder="VD: 10A1, 10A2..."></textarea>
                                         </div>
-
                                         <div class="mb-3">
                                             <label class="form-label">Đơn giá suất ăn (VNĐ)</label>
                                             <input type="number" id="set-price" class="form-control fw-bold text-danger" required>
@@ -244,67 +263,62 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-md-6 mb-3">
                             <div class="card h-100 shadow-sm">
                                 <div class="card-header bg-success text-white">
-                                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Tạo Tài khoản Nhân viên</h5>
+                                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Tạo Tài khoản</h5>
                                 </div>
                                 <div class="card-body">
                                     <form id="form-create-user">
                                         <div class="mb-2">
-                                            <label class="form-label">Email đăng nhập</label>
-                                            <input type="email" id="new-user-email" class="form-control" placeholder="nv@school.edu.vn" required>
+                                            <label class="form-label">Email</label>
+                                            <input type="email" id="new-user-email" class="form-control" required>
                                         </div>
                                         <div class="mb-2">
                                             <label class="form-label">Mật khẩu</label>
-                                            <input type="text" id="new-user-pass" class="form-control" placeholder="Ít nhất 6 ký tự" required>
+                                            <input type="text" id="new-user-pass" class="form-control" required>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Phân quyền (Role)</label>
+                                            <label class="form-label">Quyền</label>
                                             <select id="new-user-role" class="form-select">
-                                                <option value="staff">Nhân viên (Chỉ nhập & Xem)</option>
-                                                <option value="accountant">Kế toán (Sửa/Xóa & Báo cáo)</option>
-                                                <option value="admin">Admin (Toàn quyền)</option>
+                                                <option value="staff">Nhân viên</option>
+                                                <option value="accountant">Kế toán</option>
+                                                <option value="admin">Admin</option>
                                             </select>
                                         </div>
-                                        <button type="submit" class="btn btn-success w-100" id="btn-create-user">
-                                            <i class="fas fa-plus"></i> Tạo User
-                                        </button>
+                                        <button type="submit" class="btn btn-success w-100" id="btn-create-user">Tạo User</button>
                                     </form>
-                                    <div id="create-msg" class="mt-2 text-center small"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-            </div> </div>
+            </div>
+        </div>
     </div>
 
     <div id="print-area-receipt" class="d-none">
         <div class="receipt-box p-4" style="border: 2px solid #000; height: 100%;">
             <div class="text-center mb-4">
                 <h3 class="fw-bold mb-0" id="p-school-name">TRƯỜNG THPT X</h3>
-                <small id="p-school-addr">Địa chỉ: ...</small><br>
-                <small>ĐT: <span id="p-school-phone">...</span></small>
+                <small id="p-school-addr">...</small><br>
                 <h2 class="mt-4 fw-bold">PHIẾU THU TIỀN ĂN</h2>
-                <p><i>(Liên 1: Lưu - Liên 2: Giao người nộp)</i></p>
-                <p>Ngày.....tháng.....năm 20...</p>
+                <p>Ngày nộp: <span id="p-date">...</span></p>
             </div>
             <div class="content fs-5">
                 <p>Số phiếu: <b id="p-code">...</b></p>
-                <p>Họ tên học sinh: <b id="p-name" class="text-uppercase">...</b> - Lớp: <b id="p-class">...</b></p>
-                <p>Lý do thu: <span id="p-reason">...</span></p>
-                <p>Số suất đăng ký: <b id="p-meals">...</b> suất</p>
+                <p>Họ tên: <b id="p-name" class="text-uppercase">...</b> - Lớp: <b id="p-class">...</b></p>
+                <p>Lý do: <span id="p-reason">...</span></p>
+                <p>Số suất: <b id="p-meals">...</b> suất</p>
                 <p>Số tiền: <b id="p-amount" class="fs-4">...</b> VNĐ</p>
-                <p>Viết bằng chữ: <i id="p-text-money">...</i></p>
+                <p>Bằng chữ: <i id="p-text-money">...</i></p>
                 <p>Phương thức: <span id="p-method">...</span></p>
             </div>
             <div class="row mt-5 text-center">
-                <div class="col-4"><b>Người nộp tiền</b><br><i>(Ký, họ tên)</i></div>
-                <div class="col-4"><b>Người lập phiếu</b><br><i>(Ký, họ tên)</i><br><br><br><span id="p-creator">...</span></div>
-                <div class="col-4"><b>Thủ quỹ/Kế toán</b><br><i>(Ký, họ tên)</i></div>
+                <div class="col-4"><b>Người nộp</b><br><br><br></div>
+                <div class="col-4"><b>Người lập phiếu</b><br><br><br><span id="p-creator">...</span></div>
+                <div class="col-4"><b>Thủ quỹ</b><br><br><br></div>
             </div>
         </div>
     </div>
@@ -314,7 +328,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script src="app.js"></script>
 </body>
 </html>

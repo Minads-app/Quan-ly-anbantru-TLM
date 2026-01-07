@@ -1,67 +1,158 @@
-body {
-    background-color: #f0f2f5;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* =========================================
+   STYLE.CSS - GIAO DIỆN HIỆN ĐẠI
+   ========================================= */
+
+/* 1. IMPORT FONT TIẾNG VIỆT (BE VIETNAM PRO) */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
+
+/* 2. CẤU HÌNH MÀU SẮC (THEME) */
+:root {
+    /* Bạn sửa mã màu ở đây */
+    --primary-color: #2563eb; /* Xanh hoàng gia (Thay bằng màu trường bạn) */
+    --secondary-color: #64748b;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --bg-color: #f1f5f9; /* Màu nền xám xanh nhạt */
 }
 
+/* 3. CẤU TRÚC CHUNG */
+body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background-color: var(--bg-color);
+    color: #1e293b;
+    font-size: 0.95rem; /* Chữ nhỏ gọn tinh tế hơn */
+}
+
+/* Thanh Menu (Navbar) */
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color), #1e40af) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* 4. CÁC KHỐI (CARDS) */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    margin-bottom: 20px;
+}
+.card-header {
+    background-color: white !important;
+    border-bottom: 1px solid #f1f5f9;
+    font-weight: 700;
+    color: var(--primary-color);
+    border-radius: 12px 12px 0 0 !important;
+    padding: 15px 20px;
+}
+
+/* 5. FORM & INPUTS */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #475569;
+    margin-bottom: 4px;
+}
+
+/* 6. NÚT BẤM (BUTTONS) */
+.btn {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 8px 16px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.btn-primary:hover {
+    background-color: #1d4ed8; /* Màu đậm hơn khi hover */
+}
+
+/* 7. MÀN HÌNH LOGIN */
 #login-overlay {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100vh;
-    background: rgba(0,0,0,0.8);
+    background: linear-gradient(135deg, rgba(37,99,235,0.9), rgba(30,64,175,0.9)), url('https://source.unsplash.com/random/1920x1080/?school') center/cover;
     z-index: 9999;
 }
-
-.admin-only, .accountant-only {
-    display: none; /* Mặc định ẩn, JS sẽ mở */
+#login-overlay .card {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* --- PRINT CONFIGURATION (Rất quan trọng) --- */
-@media print {
-    /* 1. Ẩn toàn bộ giao diện Web App */
-    body * {
-        visibility: hidden;
-    }
+/* 8. CÁC TABS */
+.nav-tabs .nav-link {
+    border: none;
+    color: #64748b;
+    font-weight: 600;
+    padding: 12px 20px;
+}
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    background: transparent;
+}
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+}
 
-    /* 2. Cấu hình in PHIẾU THU (A4 Dọc) */
+/* 9. VÙNG DÁN ẢNH */
+#paste-area {
+    border: 2px dashed #cbd5e1 !important;
+    background-color: #f8fafc !important;
+    transition: all 0.2s;
+}
+#paste-area:hover {
+    border-color: var(--primary-color) !important;
+    background-color: #eff6ff !important;
+}
+
+/* --- GIỮ NGUYÊN PHẦN IN ẤN BÊN DƯỚI --- */
+.admin-only, .accountant-only { display: none; }
+
+@media print {
+    body * { visibility: hidden; }
+    
     .print-receipt-mode #print-area-receipt,
     .print-receipt-mode #print-area-receipt * {
         visibility: visible;
     }
     .print-receipt-mode #print-area-receipt {
-        position: absolute;
-        left: 0; top: 0;
+        position: absolute; left: 0; top: 0;
         width: 100%; height: 100%;
         display: block !important;
-        padding: 20px;
+        padding: 0; margin: 0; border: none !important;
     }
-    .print-receipt-mode @page {
-        size: A4 portrait;
-        margin: 1cm;
+    .print-receipt-mode .receipt-box {
+        border: none !important; /* Bỏ khung khi in thật */
     }
-
-    /* 3. Cấu hình in BÁO CÁO (A4 Ngang) */
+    
     .print-report-mode #tab-baocao,
     .print-report-mode #tab-baocao * {
         visibility: visible;
     }
     .print-report-mode #tab-baocao {
-        position: absolute;
-        left: 0; top: 0;
-        width: 100%;
-        display: block !important;
-        background: white;
+        position: absolute; left: 0; top: 0; width: 100%;
+        display: block !important; background: white;
     }
-    /* Ẩn các nút bấm trong báo cáo khi in */
-    .print-report-mode button, 
-    .print-report-mode select,
-    .print-report-mode .d-flex { 
-        display: none !important; 
-    }
-    .print-report-mode .print-show {
-        display: block !important;
-    }
-    .print-report-mode @page {
-        size: A4 landscape;
-        margin: 1cm;
-    }
+    .print-report-mode button, .print-report-mode select, 
+    .print-report-mode .d-flex { display: none !important; }
+    .print-report-mode .print-show { display: block !important; }
+    
+    @page { margin: 0.5cm; }
 }

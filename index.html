@@ -57,33 +57,35 @@
                                 <form id="form-receipt">
                                     <div class="mb-2">
                                         <label>Họ tên học sinh <span class="text-danger">*</span></label>
-                                        <input type="text" id="inp-name" class="form-control" required>
+                                        <input type="text" id="inp-name" class="form-control" required autocomplete="off">
                                     </div>
+                                    
                                     <div class="mb-2">
-    <label>Lớp <span class="text-danger">*</span></label>
-    
-    <input type="text" id="inp-class" class="form-control" list="list-classes" placeholder="Gõ tên lớp..." required autocomplete="off">
-    
-    <datalist id="list-classes"></datalist>
-</div>
+                                        <label>Lớp <span class="text-danger">*</span></label>
+                                        <input type="text" id="inp-class" class="form-control" list="list-classes" placeholder="Gõ tên lớp để tìm..." required autocomplete="off">
+                                        <datalist id="list-classes"></datalist> </div>
+
                                     <div class="row">
                                         <div class="col-6 mb-2">
                                             <label>Số suất đăng ký</label>
-                                            <input type="number" id="inp-meals" class="form-control" min="1" value="1" required>
+                                            <input type="number" id="inp-meals" class="form-control" min="0.5" step="0.5" value="1" required>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label>Đơn giá (VNĐ)</label>
                                             <input type="text" id="inp-price-display" class="form-control bg-white" readonly>
                                         </div>
                                     </div>
+                                    
                                     <div class="mb-2">
                                         <label>Tổng tiền phải thu</label>
                                         <input type="text" id="inp-amount-display" 
-                                           class="form-control fw-bold text-success fs-5"
-                                           oninput="this.value = this.value.replace(/[^0-9]/g, ''); calculateMealsFromAmount()"
-                                           onblur="formatAmountDisplay()"
-                                           placeholder="Nhập số tiền (VD: 35000)...">
-                                        <input type="hidden" id="inp-amount-hidden">
+                                               class="form-control fw-bold text-success fs-5"
+                                               oninput="this.value = this.value.replace(/[^0-9]/g, ''); calculateMealsFromAmount()"
+                                               onblur="formatAmountDisplay()"
+                                               placeholder="Nhập số tiền..." required>
+                                        <input type="hidden" id="inp-amount-hidden"> 
+                                    </div>
+
                                     <div class="mb-2">
                                         <label>Lý do thu</label>
                                         <input type="text" id="inp-reason" class="form-control" value="Tiền ăn bán trú">
@@ -207,75 +209,78 @@
                 </div>
 
                 <div class="tab-pane fade" id="tab-cauhinh">
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="fas fa-cog"></i> Cấu hình Hệ thống</h5>
-                </div>
-                <div class="card-body">
-                    <form id="form-settings">
-                        <div class="mb-2">
-                            <label class="form-label">Tên Căn tin / Trường</label>
-                            <input type="text" id="set-name" class="form-control" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Địa chỉ</label>
-                            <input type="text" id="set-address" class="form-control">
-                        </div>
-                        <div class="mb-2">
-    <label class="form-label">Điện thoại</label>
-    <input type="text" id="set-phone" class="form-control">
-</div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-danger text-white">
+                                    <h5 class="mb-0"><i class="fas fa-cog"></i> Cấu hình Hệ thống</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="form-settings">
+                                        <div class="mb-2">
+                                            <label class="form-label">Tên Căn tin / Trường</label>
+                                            <input type="text" id="set-name" class="form-control" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Địa chỉ</label>
+                                            <input type="text" id="set-address" class="form-control">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Điện thoại</label>
+                                            <input type="text" id="set-phone" class="form-control">
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <label class="form-label">Danh sách Lớp (Ngăn cách bằng dấu phẩy)</label>
+                                            <textarea id="set-classes" class="form-control" rows="3" placeholder="VD: 10A1, 10A2, 11B1..."></textarea>
+                                        </div>
 
-<div class="mb-2">
-    <label class="form-label">Danh sách Lớp (Ngăn cách bằng dấu phẩy)</label>
-    <textarea id="set-classes" class="form-control" rows="3" placeholder="Ví dụ: 10A1, 10A2, 11B1, 11B2..."></textarea>
-</div>
-                       
-                        <div class="mb-3">
-                            <label class="form-label">Đơn giá suất ăn (VNĐ)</label>
-                            <input type="number" id="set-price" class="form-control fw-bold text-danger" required>
+                                        <div class="mb-3">
+                                            <label class="form-label">Đơn giá suất ăn (VNĐ)</label>
+                                            <input type="number" id="set-price" class="form-control fw-bold text-danger" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-danger w-100">Lưu Cấu Hình</button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">Lưu Cấu Hình</button>
-                    </form>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-md-6 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Tạo Tài khoản Nhân viên</h5>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Tạo Tài khoản Nhân viên</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="form-create-user">
+                                        <div class="mb-2">
+                                            <label class="form-label">Email đăng nhập</label>
+                                            <input type="email" id="new-user-email" class="form-control" placeholder="nv@school.edu.vn" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Mật khẩu</label>
+                                            <input type="text" id="new-user-pass" class="form-control" placeholder="Ít nhất 6 ký tự" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Phân quyền (Role)</label>
+                                            <select id="new-user-role" class="form-select">
+                                                <option value="staff">Nhân viên (Chỉ nhập & Xem)</option>
+                                                <option value="accountant">Kế toán (Sửa/Xóa & Báo cáo)</option>
+                                                <option value="admin">Admin (Toàn quyền)</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-success w-100" id="btn-create-user">
+                                            <i class="fas fa-plus"></i> Tạo User
+                                        </button>
+                                    </form>
+                                    <div id="create-msg" class="mt-2 text-center small"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form id="form-create-user">
-                        <div class="mb-2">
-                            <label class="form-label">Email đăng nhập</label>
-                            <input type="email" id="new-user-email" class="form-control" placeholder="nv@school.edu.vn" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Mật khẩu</label>
-                            <input type="text" id="new-user-pass" class="form-control" placeholder="Ít nhất 6 ký tự" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Phân quyền (Role)</label>
-                            <select id="new-user-role" class="form-select">
-                                <option value="staff">Nhân viên (Chỉ nhập & Xem)</option>
-                                <option value="accountant">Kế toán (Sửa/Xóa & Báo cáo)</option>
-                                <option value="admin">Admin (Toàn quyền)</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100" id="btn-create-user">
-                            <i class="fas fa-plus"></i> Tạo User
-                        </button>
-                    </form>
-                    <div id="create-msg" class="mt-2 text-center small"></div>
-                </div>
-            </div>
-        </div>
+
+            </div> </div>
     </div>
-</div>
 
     <div id="print-area-receipt" class="d-none">
         <div class="receipt-box p-4" style="border: 2px solid #000; height: 100%;">
@@ -284,7 +289,7 @@
                 <small id="p-school-addr">Địa chỉ: ...</small><br>
                 <small>ĐT: <span id="p-school-phone">...</span></small>
                 <h2 class="mt-4 fw-bold">PHIẾU THU TIỀN ĂN</h2>
-                <p><i>Liên 2: Giao người nộp)</i></p>
+                <p><i>(Liên 1: Lưu - Liên 2: Giao người nộp)</i></p>
                 <p>Ngày.....tháng.....năm 20...</p>
             </div>
             <div class="content fs-5">
@@ -312,5 +317,4 @@
     
     <script src="app.js"></script>
 </body>
-
 </html>

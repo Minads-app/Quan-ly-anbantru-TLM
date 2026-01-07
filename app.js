@@ -92,33 +92,73 @@ async function loadSettings() {
     try {
         const doc = await db.collection('settings').doc('general').get();
         if (doc.exists) {
-            systemSettings = doc.data();
+            // Merge dữ liệu mới vào settings (để tránh mất field classList nếu db cũ chưa có)
+            systemSettings = { ...systemSettings, ...doc.data() };
         }
-        // Điền vào form Cấu hình
+
+        // 1. Điền vào form Cấu hình
         document.getElementById('set-name').value = systemSettings.schoolName;
         document.getElementById('set-address').value = systemSettings.address;
         document.getElementById('set-phone').value = systemSettings.phone;
         document.getElementById('set-price').value = systemSettings.mealPrice;
         
-        // Cập nhật giá lên Form Nhập
+        // MỚI: Hiển thị danh sách lớp ra Textarea (nối bằng dấu phẩy)
+        const classes = systemSettings.classList || [];
+        document.getElementById('set-classes').value = classes.join(', ');
+
+        // 2. Cập nhật Dropdown Lớp ở màn hình Lập phiếu thu
+        updateClassSelect(classes);
+
+        // 3. Cập nhật giá lên Form Nhập
         updatePriceDisplay();
-    } catch (e) { console.log("Chưa có cấu hình, dùng mặc định"); }
+    } catch (e) { console.log("Lỗi load settings hoặc chưa có cấu hình: ", e); }
+}
+
+// Hàm phụ trợ: Render danh sách lớp vào thẻ Select
+function updateClassSelect(classList) {
+    const selectEl = document.getElementById('inp-class');
+    // Giữ lại option mặc định đầu tiên
+    selectEl.innerHTML = '<option value="">-- Chọn lớp --</option>';
+    
+    if (classList && classList.length > 0) {
+        classList.forEach(className => {
+            const opt = document.createElement('option');
+            opt.value = className;
+            opt.innerText = className;
+            selectEl.appendChild(opt);
+        });
+    } else {
+        // Nếu chưa có lớp nào, thêm 1 option báo lỗi
+        const opt = document.createElement('option');
+        opt.innerText = "Chưa cấu hình lớp!";
+        opt.disabled = true;
+        selectEl.appendChild(opt);
+    }
 }
 
 document.getElementById('form-settings').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (currentRole !== 'admin') return alert("Bạn không có quyền!");
     
+    // Xử lý danh sách lớp: Tách dấu phẩy -> Xóa khoảng trắng thừa -> Lọc rỗng
+    const rawClasses = document.getElementById('set-classes').value;
+    const classArray = rawClasses.split(',').map(c => c.trim()).filter(c => c !== "");
+
     const newSettings = {
         schoolName: document.getElementById('set-name').value,
         address: document.getElementById('set-address').value,
         phone: document.getElementById('set-phone').value,
-        mealPrice: parseInt(document.getElementById('set-price').value)
+        mealPrice: parseInt(document.getElementById('set-price').value),
+        classList: classArray // MỚI: Lưu mảng lớp
     };
     
-    await db.collection('settings').doc('general').set(newSettings);
-    alert("Đã lưu cấu hình!");
-    loadSettings();
+    try {
+        await db.collection('settings').doc('general').set(newSettings);
+        alert("Đã lưu cấu hình và cập nhật danh sách lớp!");
+        loadSettings(); // Reload lại để áp dụng ngay
+    } catch (err) {
+        alert("Lỗi lưu: " + err.message);
+    }
 });
 
 // --- 5. LOGIC LẬP PHIẾU THU ---
@@ -407,3 +447,4 @@ if (formCreateUser) {
         }
     });
 }
+

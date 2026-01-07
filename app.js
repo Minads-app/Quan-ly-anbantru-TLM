@@ -1,4 +1,7 @@
-// --- 1. CẤU HÌNH FIREBASE (THAY THẾ BẰNG KEY CỦA BẠN) ---
+// ==========================================
+// 1. CẤU HÌNH FIREBASE
+// ==========================================
+// LƯU Ý: Hãy thay thế bằng Config của dự án bạn
 const firebaseConfig = {
   apiKey: "AIzaSyAKmHgrchZwCYaZW0ky831Oj6qQrUS2HuI",
   authDomain: "quan-ly-ban-tru-tlm.firebaseapp.com",
@@ -8,23 +11,31 @@ const firebaseConfig = {
   appId: "1:22398649576:web:89f0323537781697adf55d"
 };
 
-// Khởi tạo
+// Khởi tạo Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- 2. BIẾN TOÀN CỤC & STATE ---
+// ==========================================
+// 2. BIẾN TOÀN CỤC (STATE)
+// ==========================================
 let currentUser = null;
-let currentRole = null;
+let currentRole = null; // 'admin', 'accountant', 'staff'
+let editingReceiptId = null; // ID phiếu đang sửa (null nếu là tạo mới)
+let lastReceiptData = null; // Dữ liệu phiếu vừa lưu (để in)
+
+// Cấu hình mặc định
 let systemSettings = {
     schoolName: "Trường THPT ...",
     address: "Địa chỉ ...",
     phone: "...",
-    mealPrice: 30000 
+    mealPrice: 35000,
+    classList: [] // Danh sách lớp
 };
-let lastReceiptData = null; // Để in phiếu vừa tạo
 
-// --- 3. QUẢN LÝ AUTH & PHÂN QUYỀN ---
+// ==========================================
+// 3. QUẢN LÝ ĐĂNG NHẬP & PHÂN QUYỀN
+// ==========================================
 
 // Lắng nghe trạng thái đăng nhập
 auth.onAuthStateChanged(async (user) => {
@@ -33,12 +44,12 @@ auth.onAuthStateChanged(async (user) => {
         document.getElementById('login-overlay').classList.add('d-none');
         document.getElementById('main-app').classList.remove('d-none');
         
-        // Lấy thông tin Role & Settings
+        // Lấy Role & Settings
         await fetchUserRole(user.uid);
         await loadSettings();
         
         document.getElementById('user-display').innerText = user.email;
-        loadReceipts('manage'); // Load dữ liệu ban đầu
+        loadReceipts('manage'); // Load dữ liệu mặc định
     } else {
         currentUser = null;
         document.getElementById('login-overlay').classList.remove('d-none');
@@ -46,7 +57,7 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// Xử lý Login Form
+// Xử lý Form Đăng nhập
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -55,69 +66,65 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 });
 
 function logout() {
-    auth.signOut();
-    window.location.reload();
+    auth.signOut().then(() => window.location.reload());
 }
 
-// Lấy Role từ Firestore
+// Lấy quyền user từ Firestore
 async function fetchUserRole(uid) {
     try {
         const doc = await db.collection('users').doc(uid).get();
-        if (doc.exists) {
-            currentRole = doc.data().role; // admin, accountant, staff
-        } else {
-            currentRole = 'staff'; // Mặc định nếu chưa set
-        }
+        currentRole = doc.exists ? doc.data().role : 'staff';
         document.getElementById('role-display').innerText = currentRole.toUpperCase();
         applyPermissons(currentRole);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Lỗi lấy quyền:", e); }
 }
 
-// Ẩn hiện nút theo quyền
+// Ẩn/Hiện nút chức năng theo quyền
 function applyPermissons(role) {
     const adminEls = document.querySelectorAll('.admin-only');
-    const accEls = document.querySelectorAll('.accountant-only'); // Dành cho nút Sửa/Xóa (nếu có)
     
-    // Reset
+    // Reset ẩn hết trước
     adminEls.forEach(e => e.style.display = 'none');
     
+    // Nếu là Admin thì hiện các nút admin
     if (role === 'admin') {
         adminEls.forEach(e => e.style.display = 'block');
     }
-    // Accountant logic có thể thêm ở đây
 }
 
-// --- 4. CẤU HÌNH & SETTINGS ---
+// ==========================================
+// 4. CẤU HÌNH HỆ THỐNG (SETTINGS)
+// ==========================================
+
 async function loadSettings() {
     try {
         const doc = await db.collection('settings').doc('general').get();
         if (doc.exists) {
-            // Merge dữ liệu mới vào settings (để tránh mất field classList nếu db cũ chưa có)
             systemSettings = { ...systemSettings, ...doc.data() };
         }
-
+        
         // 1. Điền vào form Cấu hình
         document.getElementById('set-name').value = systemSettings.schoolName;
         document.getElementById('set-address').value = systemSettings.address;
         document.getElementById('set-phone').value = systemSettings.phone;
         document.getElementById('set-price').value = systemSettings.mealPrice;
         
-        // MỚI: Hiển thị danh sách lớp ra Textarea (nối bằng dấu phẩy)
+        // 2. Điền danh sách lớp vào Textarea (Nối mảng thành chuỗi)
         const classes = systemSettings.classList || [];
         document.getElementById('set-classes').value = classes.join(', ');
 
-        // 2. Cập nhật Dropdown Lớp ở màn hình Lập phiếu thu
+        // 3. Cập nhật Dropdown Lớp ở màn hình Nhập
         updateClassSelect(classes);
 
-        // 3. Cập nhật giá lên Form Nhập
+        // 4. Cập nhật giá lên Form Nhập
         updatePriceDisplay();
-    } catch (e) { console.log("Lỗi load settings hoặc chưa có cấu hình: ", e); }
+        
+    } catch (e) { console.log("Chưa có cấu hình hoặc lỗi mạng", e); }
 }
 
-// Hàm phụ trợ: Render danh sách lớp vào thẻ Select
+// Hàm render thẻ Select chọn lớp
 function updateClassSelect(classList) {
     const selectEl = document.getElementById('inp-class');
-    // Giữ lại option mặc định đầu tiên
     selectEl.innerHTML = '<option value="">-- Chọn lớp --</option>';
     
     if (classList && classList.length > 0) {
@@ -128,19 +135,19 @@ function updateClassSelect(classList) {
             selectEl.appendChild(opt);
         });
     } else {
-        // Nếu chưa có lớp nào, thêm 1 option báo lỗi
         const opt = document.createElement('option');
-        opt.innerText = "Chưa cấu hình lớp!";
+        opt.innerText = "Chưa cấu hình lớp (Vào tab Cấu hình)";
         opt.disabled = true;
         selectEl.appendChild(opt);
     }
 }
 
+// Lưu cấu hình (Chỉ Admin)
 document.getElementById('form-settings').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (currentRole !== 'admin') return alert("Bạn không có quyền!");
     
-    // Xử lý danh sách lớp: Tách dấu phẩy -> Xóa khoảng trắng thừa -> Lọc rỗng
+    // Xử lý chuỗi lớp nhập vào -> Mảng
     const rawClasses = document.getElementById('set-classes').value;
     const classArray = rawClasses.split(',').map(c => c.trim()).filter(c => c !== "");
 
@@ -149,85 +156,153 @@ document.getElementById('form-settings').addEventListener('submit', async (e) =>
         address: document.getElementById('set-address').value,
         phone: document.getElementById('set-phone').value,
         mealPrice: parseInt(document.getElementById('set-price').value),
-        classList: classArray // MỚI: Lưu mảng lớp
+        classList: classArray
     };
     
     try {
         await db.collection('settings').doc('general').set(newSettings);
-        alert("Đã lưu cấu hình và cập nhật danh sách lớp!");
-        loadSettings(); // Reload lại để áp dụng ngay
+        alert("Đã lưu cấu hình thành công!");
+        loadSettings(); // Reload để áp dụng ngay
     } catch (err) {
         alert("Lỗi lưu: " + err.message);
     }
 });
 
-// --- 5. LOGIC LẬP PHIẾU THU ---
+// ==========================================
+// 5. LOGIC LẬP PHIẾU THU (CORE)
+// ==========================================
 
 function updatePriceDisplay() {
     const price = systemSettings.mealPrice;
     document.getElementById('inp-price-display').value = formatMoney(price);
-    calculateTotal();
+    calculateTotalFromMeals(); // Tính lại tổng tiền theo giá mới
 }
 
-function calculateTotal() {
-    const meals = parseInt(document.getElementById('inp-meals').value) || 0;
+// Cách 1: Nhập số suất -> Tính ra tiền
+function calculateTotalFromMeals() {
+    const meals = parseFloat(document.getElementById('inp-meals').value) || 0;
     const total = meals * systemSettings.mealPrice;
+    
     document.getElementById('inp-amount-hidden').value = total;
     document.getElementById('inp-amount-display').value = formatMoney(total);
 }
 
-document.getElementById('inp-meals').addEventListener('input', calculateTotal);
+// Cách 2: Nhập tổng tiền -> Chia ngược ra số suất
+function calculateMealsFromAmount() {
+    const amountInput = document.getElementById('inp-amount-display');
+    const mealsInput = document.getElementById('inp-meals');
+    const hiddenAmount = document.getElementById('inp-amount-hidden');
+    
+    // Lấy số thô (bỏ dấu chấm/phẩy)
+    let rawAmount = amountInput.value.replace(/\D/g, ''); 
+    
+    if (systemSettings.mealPrice > 0 && rawAmount > 0) {
+        let meals = rawAmount / systemSettings.mealPrice;
+        // Làm tròn 2 số thập phân
+        mealsInput.value = Math.round(meals * 100) / 100; 
+        hiddenAmount.value = rawAmount;
+    } else {
+        mealsInput.value = 0;
+        hiddenAmount.value = 0;
+    }
+}
 
+// Format lại số tiền khi người dùng nhập xong (blur)
+function formatAmountDisplay() {
+    const amountInput = document.getElementById('inp-amount-display');
+    let rawVal = amountInput.value.replace(/\D/g, '');
+    if(rawVal) {
+        amountInput.value = formatMoney(parseInt(rawVal));
+    }
+}
+
+// Lắng nghe sự kiện nhập liệu
+document.getElementById('inp-meals').addEventListener('input', calculateTotalFromMeals);
+// Sự kiện cho input tiền đã được gán trực tiếp trong HTML (oninput, onblur)
+
+// --- XỬ LÝ LƯU PHIẾU (TẠO MỚI HOẶC SỬA) ---
 document.getElementById('form-receipt').addEventListener('submit', async (e) => {
     e.preventDefault();
     const amount = parseInt(document.getElementById('inp-amount-hidden').value);
+    const meals = parseFloat(document.getElementById('inp-meals').value);
     
-    // VALIDATION
+    // Validate
     if (amount <= 0) return alert("Số tiền phải lớn hơn 0");
-    if (amount % systemSettings.mealPrice !== 0) return alert("Lỗi: Tiền không chẵn theo đơn giá!");
+    if (!Number.isInteger(meals) && meals % 0.5 !== 0) {
+       // Cảnh báo nhẹ nếu số suất quá lẻ, nhưng vẫn cho lưu tùy quy định
+    }
 
     const receiptData = {
         studentName: document.getElementById('inp-name').value,
         studentClass: document.getElementById('inp-class').value,
-        mealCount: parseInt(document.getElementById('inp-meals').value),
+        mealCount: meals,
         unitPrice: systemSettings.mealPrice,
         amount: amount,
         reason: document.getElementById('inp-reason').value,
-        paymentMethod: document.getElementById('inp-method').value,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        createdBy: currentUser.email,
-        receiptCode: "PT" + Date.now().toString().slice(-6) // Mã phiếu đơn giản
+        paymentMethod: document.getElementById('inp-method').value
     };
 
     try {
-        await db.collection('receipts').add(receiptData);
-        alert("Lưu phiếu thành công!");
-        lastReceiptData = receiptData;
-        lastReceiptData.createdAtDate = new Date(); // Fix lỗi hiển thị ngày khi vừa tạo
+        if (editingReceiptId) {
+            // --- CẬP NHẬT (UPDATE) ---
+            receiptData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+            receiptData.updatedBy = currentUser.email;
+            
+            await db.collection('receipts').doc(editingReceiptId).update(receiptData);
+            alert("Đã cập nhật phiếu!");
+        } else {
+            // --- TẠO MỚI (CREATE) ---
+            receiptData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            receiptData.createdBy = currentUser.email;
+            receiptData.receiptCode = "PT" + Date.now().toString().slice(-6); // Mã ngẫu nhiên
+            
+            await db.collection('receipts').add(receiptData);
+            
+            // Lưu biến tạm để in ngay
+            lastReceiptData = receiptData;
+            lastReceiptData.createdAtDate = new Date();
+            document.getElementById('btn-print-recent').disabled = false;
+            alert("Lưu phiếu thành công!");
+        }
+
+        // Reset và load lại
+        resetForm(true);
+        loadRecentReceipts();
+        loadReceipts('manage'); 
         
-        document.getElementById('btn-print-recent').disabled = false;
-        loadRecentReceipts(); // Update list nhỏ bên phải
-        resetForm(false);
     } catch (err) {
-        alert("Lỗi lưu: " + err.message);
+        alert("Lỗi lưu dữ liệu: " + err.message);
     }
 });
 
+// Reset Form và trạng thái nút
 function resetForm(full = true) {
-    if(full) document.getElementById('form-receipt').reset();
+    if(full) {
+        document.getElementById('form-receipt').reset();
+        
+        // Reset trạng thái "Đang sửa" về "Tạo mới"
+        editingReceiptId = null;
+        const btnSubmit = document.querySelector('#form-receipt button[type="submit"]');
+        btnSubmit.innerHTML = "Lưu Phiếu";
+        btnSubmit.classList.replace('btn-success', 'btn-primary'); 
+        
+        // Disable nút in cho đến khi lưu mới
+        document.getElementById('btn-print-recent').disabled = true;
+    }
     updatePriceDisplay();
     document.getElementById('inp-name').focus();
 }
 
-// List nhỏ bên tab nhập
+// Load danh sách 5 phiếu gần nhất bên tab Nhập
 async function loadRecentReceipts() {
     const snap = await db.collection('receipts').orderBy('createdAt', 'desc').limit(5).get();
     const tbody = document.getElementById('tbody-recent');
     tbody.innerHTML = '';
     snap.forEach(doc => {
         const d = doc.data();
+        const timeStr = d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '...';
         tbody.innerHTML += `<tr>
-            <td>${d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '...'}</td>
+            <td>${timeStr}</td>
             <td>${d.studentName}</td>
             <td>${d.studentClass}</td>
             <td>${formatMoney(d.amount)}</td>
@@ -235,14 +310,16 @@ async function loadRecentReceipts() {
     });
 }
 
-// --- 6. QUẢN LÝ & BÁO CÁO (Logic dùng chung) ---
+// ==========================================
+// 6. QUẢN LÝ & BÁO CÁO (Logic chung)
+// ==========================================
 
 async function loadReceipts(mode = 'manage') {
     const filterTime = document.getElementById(`filter-time-${mode}`).value;
     const tbody = document.getElementById(mode === 'manage' ? 'tbody-manage' : 'tbody-report');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center">Đang tải...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center">Đang tải dữ liệu...</td></tr>';
 
-    // Xử lý ngày tháng
+    // Xác định khoảng thời gian lọc
     let startDate = new Date();
     let endDate = new Date();
     startDate.setHours(0,0,0,0); endDate.setHours(23,59,59,999);
@@ -255,7 +332,7 @@ async function loadReceipts(mode = 'manage') {
         startDate.setDate(1);
         endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59);
     } else if (filterTime === 'all') {
-        startDate = new Date(2020, 0, 1); // Rất xa
+        startDate = new Date(2020, 0, 1);
     }
 
     // Query Firestore
@@ -275,10 +352,12 @@ async function loadReceipts(mode = 'manage') {
         const d = doc.data();
         const id = doc.id;
         
-        // Search Client-side (đơn giản) cho mode manage
+        // Search Client-side
         if (mode === 'manage') {
             const search = document.getElementById('search-manage').value.toLowerCase();
-            if (search && !d.studentName.toLowerCase().includes(search) && !d.studentClass.toLowerCase().includes(search)) return;
+            const name = d.studentName ? d.studentName.toLowerCase() : "";
+            const cls = d.studentClass ? d.studentClass.toLowerCase() : "";
+            if (search && !name.includes(search) && !cls.includes(search)) return;
         }
 
         const dateStr = d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleString('vi-VN') : '';
@@ -286,25 +365,31 @@ async function loadReceipts(mode = 'manage') {
         totalMeals += d.mealCount;
         count++;
 
-        // Nút xóa chỉ hiện cho admin/kế toán
-        const deleteBtn = (currentRole === 'admin' || currentRole === 'accountant') 
-            ? `<button class="btn btn-sm btn-danger" onclick="deleteReceipt('${id}')"><i class="fas fa-trash"></i></button>` : '';
+        // Tạo nút Sửa/Xóa (Chỉ Admin/Kế toán)
+        let actionBtns = '';
+        if ((currentRole === 'admin' || currentRole === 'accountant') && mode === 'manage') {
+            actionBtns = `
+                <button class="btn btn-sm btn-warning me-1" onclick="editReceipt('${id}')" title="Sửa"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteReceipt('${id}')" title="Xóa"><i class="fas fa-trash"></i></button>
+            `;
+        }
 
         const row = `<tr>
             <td>${mode === 'report' ? count : dateStr}</td>
-            <td>${mode === 'report' ? dateStr : d.receiptCode}</td>
+            <td>${mode === 'report' ? dateStr : (d.receiptCode || '...')}</td>
             <td>${d.studentName}</td>
             <td>${d.studentClass}</td>
             <td class="fw-bold">${formatMoney(d.amount)}</td>
             <td>${mode === 'report' ? d.mealCount : d.createdBy}</td>
             <td>
-                ${mode === 'manage' ? deleteBtn : d.paymentMethod}
-                ${mode === 'manage' ? `<button class="btn btn-sm btn-secondary" onclick="rePrint('${id}')"><i class="fas fa-print"></i></button>` : ''}
+                ${mode === 'manage' ? actionBtns : d.paymentMethod}
+                ${mode === 'manage' ? `<button class="btn btn-sm btn-secondary ms-1" onclick="rePrint('${id}')"><i class="fas fa-print"></i></button>` : ''}
             </td>
         </tr>`;
         tbody.innerHTML += row;
     });
 
+    // Cập nhật thống kê báo cáo
     if (mode === 'report') {
         document.getElementById('rpt-total-money').innerText = formatMoney(totalMoney);
         document.getElementById('rpt-total-meals').innerText = totalMeals;
@@ -312,31 +397,66 @@ async function loadReceipts(mode = 'manage') {
     }
 }
 
-// Xóa phiếu
+// --- LOGIC XÓA & SỬA ---
+
 async function deleteReceipt(id) {
     if(!confirm("Bạn chắc chắn muốn xóa phiếu này? Hành động không thể hoàn tác.")) return;
     try {
         await db.collection('receipts').doc(id).delete();
-        alert("Đã xóa");
+        alert("Đã xóa thành công!");
         loadReceipts('manage');
+        loadRecentReceipts();
     } catch (e) { alert("Lỗi: " + e.message); }
 }
 
-// --- 7. IN ẤN & UTILS ---
+async function editReceipt(id) {
+    try {
+        const doc = await db.collection('receipts').doc(id).get();
+        if (!doc.exists) return alert("Không tìm thấy phiếu!");
 
-// Helper định dạng tiền
+        const d = doc.data();
+        
+        // 1. Đổ dữ liệu vào Form
+        document.getElementById('inp-name').value = d.studentName;
+        document.getElementById('inp-class').value = d.studentClass;
+        document.getElementById('inp-meals').value = d.mealCount;
+        document.getElementById('inp-reason').value = d.reason;
+        document.getElementById('inp-method').value = d.paymentMethod;
+        
+        // 2. Set giá tiền
+        document.getElementById('inp-amount-hidden').value = d.amount;
+        document.getElementById('inp-amount-display').value = formatMoney(d.amount);
+
+        // 3. Chuyển trạng thái Sửa
+        editingReceiptId = id;
+        
+        // 4. Đổi tên nút Submit
+        const btnSubmit = document.querySelector('#form-receipt button[type="submit"]');
+        btnSubmit.innerHTML = "Cập nhật Phiếu";
+        btnSubmit.classList.replace('btn-primary', 'btn-success');
+
+        // 5. Mở Tab Lập Phiếu Thu
+        const tabTrigger = new bootstrap.Tab(document.querySelector('button[data-bs-target="#tab-phieuthu"]'));
+        tabTrigger.show();
+
+    } catch (e) {
+        alert("Lỗi tải dữ liệu: " + e.message);
+    }
+}
+
+// ==========================================
+// 7. IN ẤN & UTILS
+// ==========================================
+
 function formatMoney(num) {
-    return num.toLocaleString('vi-VN');
+    return num ? num.toLocaleString('vi-VN') : '0';
 }
 
-// Helper đọc số tiền (Đơn giản)
 function docSoThanhChu(number) {
-    // Đây là placeholder. Để code ngắn gọn, ta dùng ví dụ. 
-    // Thực tế bạn nên dùng thư viện 'vietnamese-number-reader'
-    return number.toLocaleString('vi-VN') + " đồng"; 
+    // Placeholder đọc số (Thực tế nên dùng thư viện)
+    return formatMoney(number) + " đồng"; 
 }
 
-// Chuẩn bị dữ liệu để in
 function preparePrintData(data) {
     document.getElementById('p-school-name').innerText = systemSettings.schoolName;
     document.getElementById('p-school-addr').innerText = "ĐC: " + systemSettings.address;
@@ -353,7 +473,6 @@ function preparePrintData(data) {
     document.getElementById('p-creator').innerText = data.createdBy;
 }
 
-// In phiếu vừa tạo
 function printLastReceipt() {
     if (!lastReceiptData) return;
     preparePrintData(lastReceiptData);
@@ -362,89 +481,73 @@ function printLastReceipt() {
     document.body.classList.remove('print-receipt-mode');
 }
 
-// In lại phiếu từ danh sách
 async function rePrint(id) {
-    const doc = await db.collection('receipts').doc(id).get();
-    lastReceiptData = doc.data();
-    printLastReceipt();
+    try {
+        const doc = await db.collection('receipts').doc(id).get();
+        if(doc.exists) {
+            lastReceiptData = doc.data();
+            printLastReceipt();
+        }
+    } catch(e) { console.error(e); }
 }
 
-// In báo cáo
 function printReport() {
     document.body.classList.add('print-report-mode');
     window.print();
     document.body.classList.remove('print-report-mode');
 }
 
-// Xuất Excel
 function exportExcel() {
     const table = document.getElementById("table-report");
     const wb = XLSX.utils.table_to_book(table, {sheet: "BaoCao"});
     XLSX.writeFile(wb, "BaoCao_DoanhThu.xlsx");
-
 }
-// --- 8. CHỨC NĂNG TẠO USER (Dành cho Admin) ---
+
+// ==========================================
+// 8. TẠO TÀI KHOẢN (ADMIN)
+// ==========================================
 
 const formCreateUser = document.getElementById('form-create-user');
-const msgBox = document.getElementById('create-msg');
-
 if (formCreateUser) {
     formCreateUser.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Kiểm tra quyền Admin lần cuối ở client (Database Rules sẽ chặn nếu gian lận)
-        if (currentRole !== 'admin') {
-            alert("Bạn không có quyền thực hiện chức năng này!");
-            return;
-        }
+        if (currentRole !== 'admin') return alert("Bạn không có quyền!");
 
         const email = document.getElementById('new-user-email').value;
         const password = document.getElementById('new-user-pass').value;
         const role = document.getElementById('new-user-role').value;
         const btn = document.getElementById('btn-create-user');
+        const msgBox = document.getElementById('create-msg');
 
-        if (password.length < 6) {
-            alert("Mật khẩu phải từ 6 ký tự trở lên!");
-            return;
-        }
+        if (password.length < 6) return alert("Mật khẩu phải từ 6 ký tự trở lên!");
 
         try {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo...';
             msgBox.innerText = "";
 
-            // KỸ THUẬT QUAN TRỌNG: Secondary App
-            // Tạo một instance firebase phụ để tạo user mà không làm Admin bị logout
+            // Tạo App phụ để không logout Admin
             const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
-            
-            // 1. Tạo Authentication User trên app phụ
             const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
-            const newUid = userCredential.user.uid;
-
-            // 2. Ghi Role vào Firestore (Dùng App chính - db của Admin để có quyền ghi)
-            await db.collection('users').doc(newUid).set({
+            
+            await db.collection('users').doc(userCredential.user.uid).set({
                 email: email,
                 role: role,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 3. Xóa app phụ để dọn dẹp bộ nhớ
-            await secondaryApp.delete();
+            await secondaryApp.delete(); // Xóa app phụ
 
-            alert(`Đã tạo thành công user: ${email} với quyền ${role.toUpperCase()}`);
+            alert(`Tạo thành công User: ${email} (${role})`);
             formCreateUser.reset();
 
         } catch (error) {
             console.error(error);
-            let message = error.message;
-            if (error.code === 'auth/email-already-in-use') {
-                message = "Email này đã được sử dụng!";
-            }
-            alert("Lỗi: " + message);
+            alert("Lỗi: " + error.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Tạo User';
+            btn.innerHTML = '<i class="fas fa-plus"></i> Tạo User';
         }
     });
 }
-

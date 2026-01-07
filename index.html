@@ -32,7 +32,7 @@
 
     <div id="main-app" class="d-none">
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3 shadow-sm">
-            <a class="navbar-brand" href="#"><i class="fas fa-school"></i> Quản lý Bán trú</a>
+            <a class="navbar-brand" href="#"><i class="fas fa-school"></i> Quản lý Bán trú THPT TEN LƠ MAN</a>
             <div class="ms-auto d-flex align-items-center text-white">
                 <span class="me-3"><i class="fas fa-user-circle"></i> <span id="user-display">User</span> (<span id="role-display">Guest</span>)</span>
                 <button class="btn btn-sm btn-light text-primary" onclick="logout()">Thoát</button>
@@ -200,47 +200,69 @@
                 </div>
 
                 <div class="tab-pane fade admin-only" id="tab-cauhinh">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card p-3">
-                                <h5 class="text-danger"><i class="fas fa-cog"></i> Thông tin hệ thống</h5>
-                                <form id="form-settings">
-                                    <div class="mb-2">
-                                        <label>Tên Căn tin / Nhà trường</label>
-                                        <input type="text" id="set-name" class="form-control" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label>Địa chỉ</label>
-                                        <input type="text" id="set-address" class="form-control">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label>Số điện thoại</label>
-                                        <input type="text" id="set-phone" class="form-control">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label>Đơn giá 1 suất ăn (VNĐ)</label>
-                                        <input type="number" id="set-price" class="form-control text-danger fw-bold" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-danger">Lưu Cấu Hình</button>
-                                </form>
-                            </div>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-cog"></i> Cấu hình Hệ thống</h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-settings">
+                        <div class="mb-2">
+                            <label class="form-label">Tên Căn tin / Trường</label>
+                            <input type="text" id="set-name" class="form-control" required>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card p-3 bg-light">
-                                <h5>Hướng dẫn Phân Quyền</h5>
-                                <p>Để phân quyền, vui lòng vào <b>Firebase Console > Firestore Database > collection 'users'</b> và tạo document:</p>
-                                <ul>
-                                    <li><b>ID:</b> UID của user (từ Authentication)</li>
-                                    <li><b>Field:</b> role (string)</li>
-                                    <li><b>Value:</b> admin / accountant / staff</li>
-                                </ul>
-                            </div>
+                        <div class="mb-2">
+                            <label class="form-label">Địa chỉ</label>
+                            <input type="text" id="set-address" class="form-control">
                         </div>
-                    </div>
+                        <div class="mb-2">
+                            <label class="form-label">Điện thoại</label>
+                            <input type="text" id="set-phone" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Đơn giá suất ăn (VNĐ)</label>
+                            <input type="number" id="set-price" class="form-control fw-bold text-danger" required>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Lưu Cấu Hình</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Tạo Tài khoản Nhân viên</h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-create-user">
+                        <div class="mb-2">
+                            <label class="form-label">Email đăng nhập</label>
+                            <input type="email" id="new-user-email" class="form-control" placeholder="nv@school.edu.vn" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Mật khẩu</label>
+                            <input type="text" id="new-user-pass" class="form-control" placeholder="Ít nhất 6 ký tự" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phân quyền (Role)</label>
+                            <select id="new-user-role" class="form-select">
+                                <option value="staff">Nhân viên (Chỉ nhập & Xem)</option>
+                                <option value="accountant">Kế toán (Sửa/Xóa & Báo cáo)</option>
+                                <option value="admin">Admin (Toàn quyền)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100" id="btn-create-user">
+                            <i class="fas fa-plus"></i> Tạo User
+                        </button>
+                    </form>
+                    <div id="create-msg" class="mt-2 text-center small"></div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <div id="print-area-receipt" class="d-none">
         <div class="receipt-box p-4" style="border: 2px solid #000; height: 100%;">
@@ -277,4 +299,5 @@
     
     <script src="app.js"></script>
 </body>
+
 </html>

@@ -103,15 +103,22 @@ async function loadSettings() {
     } catch (e) { console.log(e); }
 }
 
-// MỚI: Hàm render Datalist cho gợi ý lớp
+// HÀM ĐÃ ĐƯỢC NÂNG CẤP ĐỂ KHÔNG GÂY LỖI MÀN HÌNH TRẮNG
 function updateClassDatalist(classList) {
     const dataList = document.getElementById('list-classes');
+    
+    // NẾU KHÔNG TÌM THẤY THẺ HTML -> DỪNG LẠI (KHÔNG CRASH APP)
+    if (!dataList) {
+        console.warn("Chưa có thẻ <datalist id='list-classes'> trong HTML!");
+        return; 
+    }
+
     dataList.innerHTML = ''; // Xóa cũ
     
     if (classList && classList.length > 0) {
         classList.forEach(className => {
             const opt = document.createElement('option');
-            opt.value = className; // Giá trị gợi ý
+            opt.value = className;
             dataList.appendChild(opt);
         });
     }
@@ -483,3 +490,4 @@ if (formCreateUser) {
         }
     });
 }
+

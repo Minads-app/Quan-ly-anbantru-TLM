@@ -105,20 +105,32 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label class="d-flex justify-content-between">
-                                            <span>Minh chứng (Ảnh CK)</span>
-                                            <small class="text-muted fst-italic">Click vào ô dưới & bấm Ctrl+V để dán ảnh</small>
-                                        </label>
-                                        
-                                        <div id="paste-area" class="border rounded p-2 text-center bg-white" style="cursor: pointer; position: relative;" tabindex="0">
-                                            <span id="paste-placeholder" class="text-muted small"><i class="fas fa-paste"></i> Dán ảnh vào đây</span>
-                                            <img id="img-preview" class="img-fluid d-none" style="max-height: 150px; border: 1px dashed #ccc;">
-                                            <button type="button" id="btn-remove-img" class="btn btn-sm btn-danger position-absolute top-0 end-0 d-none" style="margin: 5px;">&times;</button>
-                                        </div>
-                                        <input type="hidden" id="inp-img-base64">
-                                        
-                                        <input type="text" id="inp-img-link" class="form-control mt-1 form-control-sm" placeholder="Hoặc dán link Google Drive/Zalo vào đây...">
-                                    </div>
+    <label class="d-flex justify-content-between">
+        <span>Minh chứng (Ảnh CK)</span>
+        <small class="text-muted fst-italic">Dán (Ctrl+V) hoặc Click để chọn ảnh</small>
+    </label>
+    
+    <div id="paste-area" class="border rounded p-2 text-center bg-white position-relative" 
+         style="cursor: pointer; min-height: 100px; display: flex; align-items: center; justify-content: center;"
+         onclick="document.getElementById('inp-file-upload').click()">
+         
+        <div id="paste-placeholder" class="text-muted small">
+            <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i><br>
+            Bấm Ctrl+V hoặc Click vào đây
+        </div>
+        
+        <img id="img-preview" class="img-fluid d-none" style="max-height: 150px; border: 1px dashed #ccc;">
+        
+        <button type="button" id="btn-remove-img" class="btn btn-sm btn-danger position-absolute top-0 end-0 d-none" 
+                style="margin: 5px;" onclick="event.stopPropagation(); resetImage();">&times;</button>
+    </div>
+
+    <input type="file" id="inp-file-upload" accept="image/*" class="d-none" onchange="handleFileUpload(this)">
+
+    <input type="hidden" id="inp-img-base64">
+    
+    <input type="text" id="inp-img-link" class="form-control mt-1 form-control-sm" placeholder="Hoặc dán link Google Drive/Zalo...">
+</div>
 
                                     <div class="d-flex gap-2">
                                         <button type="button" onclick="resetForm()" class="btn btn-secondary flex-fill">Làm mới</button>
@@ -331,3 +343,4 @@
     <script src="app.js"></script>
 </body>
 </html>
+
